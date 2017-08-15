@@ -1,0 +1,534 @@
+library(ggplot2)
+library(dplyr)
+library(car)
+library(plyr)
+library(quickregression)
+library(tidyr)
+library(dumm)
+library(xgboost)
+library(rpivotTable)
+
+house_train=read.csv("housing_train.csv",stringsAsFactors = F,na.strings = c("","NA","unknown"))
+house_test=read.csv("housing_test.csv",stringsAsFactors = F,na.strings = c("","NA","unknown"))
+str(house_train)
+str(house_test)
+house_train$Address
+
+house_train$Price1=house_train$Price
+house_train$Price=NULL
+names(house_train)[16]="Price"
+house_train$is_train=1
+
+house_test$Price=0
+house_test$is_train=0
+
+
+house=rbind(house_train,house_test)
+str(house)
+table(house$Type)
+house$sr.no=1:nrow(house)
+house=house[house$Type=="t",]
+
+a=sapply (house$Address, function(x) tail(strsplit(x,split=" ")[[1]],1))
+
+a=as.matrix(a)
+# View(a)
+table(a)
+length(house$road %in% names(sort(table(a),decreasing = T))[1:8])
+colSums(is.na(house))
+house$road=(a)
+house$road=as.character(house$road)
+house[house$road=="Avenue","road"]="Av"
+house$road[house$road=="Highway"]="Hwy"
+house$road[house$road=="Wky"]="Wk"
+house$road[house$road=="St"]="street"
+house$road[house$road=="Gwy"]="Hwy"
+house$road[house$road=="Rt"]="Rd"
+house$road[house$road=="Crescent"]="Cct"
+
+
+
+house$shouse= grepl("/", house$Address)
+house$shouse=ifelse(house$shouse=="TRUE",1,0)
+# house$Suburb=NULL
+house$Address=NULL
+#house$SellerG=NULL
+
+table(house$Bedroom2)
+house[is.na(house$Bedroom2),c("Bedroom2")]=3
+# house[house$Bedroom2>5,c("Bedroom2")]=3
+
+
+# xtabs(Rooms~Bathroom+Type+Bedroom2,data=house)
+table(house$Bathroom)
+
+
+house[is.na(house$Bathroom),c("Bathroom")]=1
+# house[house$Bathroom>4,c("Bathroom")]=1
+
+
+
+table(house$Car)
+house[is.na(house$Car),c("Car")]=1
+
+
+#========"Landsize"==========
+
+
+
+hist(house$Landsize)
+house$Landsize[is.na(house$Landsize)]=median(house$Landsize,na.rm = T)
+house$Landsize=log(house$Landsize+1)
+
+
+##===BuildingArea NA removal========
+
+
+
+hist(house$BuildingArea)
+house$BuildingArea[is.na(house$BuildingArea)]=median(house$BuildingArea,na.rm = T)
+house$BuildingArea=log(house$BuildingArea+1)
+
+##===YearBuilt NA removal========
+
+sort(table(house$YearBuilt),decreasing = T)
+house[is.na(house$YearBuilt),"YearBuilt"]=1970
+
+
+##===CouncilArea NA removal========
+sort(table(house$CouncilArea),decreasing = T)
+
+house$CouncilArea[is.na(house$CouncilArea)]="Boroondara"
+
+
+house$Suburb=gsub("[[:punct:]]","",house$Suburb)
+house$Suburb=gsub("[^[:alnum:]]","",house$Suburb)
+
+house$CouncilArea=gsub("[[:punct:]]","",house$CouncilArea)
+house$CouncilArea=gsub("[^[:alnum:]]","",house$CouncilArea)
+
+house$SellerG=gsub("[[:punct:]]","",house$SellerG)
+house$SellerG=gsub("[^[:alnum:]]","",house$SellerG)
+
+
+
+
+##=====  Outliers=====
+
+
+
+
+
+str(house)
+hist(house$Price)
+b=house
+str(b)
+# b=b[-c(5,9)]
+colSums(is.na(b))
+# b$CouncilArea=NULL
+b$SellerG=NULL
+# b$YearBuilt=NULL
+b=b %>% mutate(quality = BuildingArea/Rooms) 
+b=dummy(b,c("CouncilArea","YearBuilt","Suburb","Rooms","Method","Postcode","Bedroom2","Bathroom","Car","road"),limit = 500,rm_original = T)
+# b=dummy(b,c("YearBuilt","Suburb","Type","Method","Postcode","road"),limit = 500,rm_original = T)
+b$Type=NULL
+dim(b)
+
+house_train=b[b$is_train==1,]
+house_train$is_train=NULL
+
+house_test=b[b$is_train==0,]
+house_test$is_train=NULL
+
+
+b=house_train
+set.seed(2)
+a1=sample(1:nrow(b), nrow(b)*1)
+b_train=b[a1,]
+b_test=b[-a1,]
+dim(b_test)
+str(b_train)
+
+
+
+
+##==============LM===================
+# 
+# fit=lm(Price~.,b_train)
+# summary(fit)
+# fit=qlm(data = b_train,V_dependent = Price)
+# summary(fit)
+# 
+# 
+# b_train$Method_S=NULL
+# b_train$CouncilArea_Boroondara=NULL
+
+
+b_train$Distance1=b_train$Distance^2
+b_train$Distance2=b_train$Distance^3
+b_train$Distance3=b_train$Distance^4
+b_train$Distance4=b_train$Distance^5
+b_train$Distance5=b_train$Distance^6
+
+
+b_train$Landsize1=b_train$Landsize^2
+b_train$Landsize2=b_train$Landsize^3
+b_train$Landsize3=b_train$Landsize^4
+b_train$Landsize4=b_train$Landsize^5
+b_train$Landsize5=b_train$Landsize^6
+
+b_train$BuildingArea1=b_train$BuildingArea^2
+b_train$BuildingArea2=b_train$BuildingArea^3
+b_train$BuildingArea3=b_train$BuildingArea^4
+b_train$BuildingArea4=b_train$BuildingArea^5
+b_train$BuildingArea5=b_train$BuildingArea^6
+
+
+
+
+library(glmnet)
+
+
+x.b_train=as.matrix(b_train[-4])
+# x.b_train=cbind(x.b_train,x.b_train[1:3]^2,x.b_train[1:3]^3,x.b_train[1:3]^4)
+# x.b_train
+y.b_train=as.matrix(b_train[4])
+
+# x.test=as.matrix(b_test[-8])
+# x.test=cbind(x.test,x.test^2,x.test^3,x.test^4)
+# 
+# y.test=as.matrix(b_test[8])
+
+dim(as.data.frame(x.b_train))
+
+x.b_train=x.b_train[,-4]
+
+library(Matrix)
+x.b_train=Matrix(x.b_train,sparse = T)
+# y.b_train=Matrix(y.b_train,sparse = T)
+y.b_train=log(y.b_train+1)
+for (i in 0:10) {
+  assign(paste("fit_t", i, sep=""), cv.glmnet(x.b_train, y.b_train, type.measure="mse", 
+                                              alpha=i/10,family="gaussian"))
+}
+
+
+yhat0 <- predict(fit_t0, s=fit_t0$lambda.1se, newx=x.b_train)
+yhat1 <- predict(fit_t1, s=fit_t1$lambda.1se, newx=x.b_train)
+yhat2 <- predict(fit_t2, s=fit_t2$lambda.1se, newx=x.b_train)
+yhat3 <- predict(fit_t3, s=fit_t3$lambda.1se, newx=x.b_train)
+yhat4 <- predict(fit_t4, s=fit_t4$lambda.1se, newx=x.b_train)
+yhat5 <- predict(fit_t5, s=fit_t5$lambda.1se, newx=x.b_train)
+yhat6 <- predict(fit_t6, s=fit_t6$lambda.1se, newx=x.b_train)
+yhat7 <- predict(fit_t7, s=fit_t7$lambda.1se, newx=x.b_train)
+yhat8 <- predict(fit_t8, s=fit_t8$lambda.1se, newx=x.b_train)
+yhat9 <- predict(fit_t9, s=fit_t9$lambda.1se, newx=x.b_train)
+yhat10 <- predict(fit_t10, s=fit_t10$lambda.1se, newx=x.b_train)
+
+mse0 <- sqrt(mean((y.b_train - yhat0)^2))
+mse1 <- sqrt(mean((y.b_train - yhat1)^2))
+mse2 <- sqrt(mean((y.b_train - yhat2)^2))
+mse3 <- sqrt(mean((y.b_train - yhat3)^2))
+mse4 <- sqrt(mean((y.b_train - yhat4)^2))
+mse5 <- sqrt(mean((y.b_train - yhat5)^2))
+mse6 <- sqrt(mean((y.b_train - yhat6)^2))
+mse7 <- sqrt(mean((y.b_train - yhat7)^2))
+mse8 <- sqrt(mean((y.b_train - yhat8)^2))
+mse9 <- sqrt(mean((y.b_train - yhat9)^2))
+mse10 <- sqrt(mean((y.b_train - yhat10)^2))
+
+colSums(is.na(yhat1))
+dim((y.b_train))
+
+plot(exp(c(yhat0)) ~ exp(c(y.b_train)))
+sqrt(mean((exp(c(yhat0)) - exp(c(y.b_train)))^2))
+plot(fit0, xvar="lambda")
+hist(yhat0)
+yhat10 <- predict(fit10, s=fit10$lambda.1se, newx=x.test)
+
+mse=c(mse0,mse1,mse2,mse3,mse4,mse5,mse6,mse7,mse8,mse9,mse10)
+mse
+hist(mse)
+
+
+210000/343467.7
+
+plot(fit6)
+b_train$Price
+
+sqrt(2e11)
+bt=b_train
+
+bt$pre=predict(fit,bt)
+hist(bt$pre)
+
+bt$res=bt$Price-bt$pre
+
+ggplot(bt,aes(pre,res))+geom_point()+geom_smooth()
+
+ggplot(bt,aes(pre,Price))+geom_point()+geom_smooth()
+
+
+sqrt(mean((bt$res)^2))
+
+##=====  2Outliers=====
+
+
+View(house)
+
+View(house[house$BuildingArea>house$Landsize & house$Landsize!=0,])
+
+house=house %>% mutate(tot_room = Rooms+Bedroom2+Bathroom+Car) %>% select(-Rooms,-Bedroom2,-Bathroom,-Car)
+
+
+# house$Landsize[grep("/",house$Address)] 
+
+
+
+
+
+str(house)
+hist(house$Price)
+b=house
+str(b)
+b=b[-c(1,2,5,6,8,11)]
+colSums(is.na(b))
+
+
+b=dummy(b,c("Type","CouncilArea"),limit = 200,rm_original = T)
+
+
+# dmy=dummyVars("~.",b)
+# b=data.frame(predict(dmy,b))
+# a=which(names(b) %in%"Price")
+# b[-a]=scale(b[-a])
+set.seed(2)
+a1=sample(1:nrow(b), nrow(b)*0.70)
+b_train=b[a1,]
+b_test=b[-a1,]
+dim(b_test)
+
+
+
+
+##==============2LM===================
+
+fit=qlm(data = b_train,V_dependent = Price)
+summary(fit)
+
+plot(fit)
+View(bt[415,])
+
+bt=b_train
+
+bt$pre=predict(fit,bt)
+hist(bt$pre)
+
+bt$res=bt$Price-bt$pre
+
+ggplot(bt,aes(pre,res))+geom_point()+geom_smooth()
+
+ggplot(bt,aes(BuildingArea,Price))+geom_point()+geom_smooth()
+
+
+sqrt(mean((bt$res)^2))
+
+
+##=====  3Outliers=====
+
+
+View(house)
+
+View(house[house$BuildingArea>house$Landsize & house$Landsize!=0,])
+
+house=house %>% mutate(tot_room = Rooms+Bedroom2+Bathroom+Car) %>% select(-Rooms,-Bedroom2,-Bathroom,-Car)
+
+
+# house$Landsize[grep("/",house$Address)] 
+
+
+
+
+
+str(house)
+hist(house$Price)
+b=house
+str(b)
+b=b %>% mutate(quality = BuildingArea/tot_room) 
+
+b=b[-c(1,2,5,6,8,11)]
+colSums(is.na(b))
+
+
+b=dummy(b,c("Type","CouncilArea"),limit = 200,rm_original = T)
+
+
+b$Distance2=b$Distance^2
+b$Landsize2=b$Landsize^2
+b$BuildingArea2=b$BuildingArea^2
+b$tot_room2=b$tot_room^2
+
+# dmy=dummyVars("~.",b)
+# b=data.frame(predict(dmy,b))
+# a=which(names(b) %in%"Price")
+# b[-a]=scale(b[-a])
+set.seed(2)
+a1=sample(1:nrow(b), nrow(b)*0.70)
+b_train=b[a1,]
+b_test=b[-a1,]
+dim(b_test)
+
+
+
+
+##==============3LM===================
+
+fit=qlm(data = b_train,V_dependent = Price)
+summary(fit)
+
+plot(fit)
+View(bt[415,])
+
+bt=b_train
+
+bt$pre=predict(fit,bt)
+hist(bt$pre)
+
+bt$res=bt$Price-bt$pre
+
+ggplot(bt,aes(pre,res))+geom_point()+geom_smooth()
+
+ggplot(bt,aes(pre,Price))+geom_point()+geom_smooth()
+
+
+sqrt(mean((bt$res)^2))
+
+##===========Test===================
+
+house=read.csv("housing_test.csv",stringsAsFactors = F,na.strings = c("","NA","unknown"))
+str(house)
+colSums(is.na(house))
+
+table(house$Bedroom2)
+house[is.na(house$Bedroom2),c("Bedroom2")]=3
+# house[house$Bedroom2>5,c("Bedroom2")]=3
+
+
+# xtabs(Rooms~Bathroom+Type+Bedroom2,data=house)
+table(house$Bathroom)
+
+
+house[is.na(house$Bathroom),c("Bathroom")]=1
+# house[house$Bathroom>4,c("Bathroom")]=1
+
+
+
+table(house$Car)
+house[is.na(house$Car),c("Car")]=1
+# house[house$Car>4,c("Car")]=1
+
+# 
+# table(house$Rooms)
+# house[house$Rooms>6,c("Rooms")]=3
+# 
+# table(house$Rooms)
+# house[house$Rooms>4 & house$Type=="u",c("Rooms")]=3
+# 
+# table(house$Rooms)
+# house[house$Rooms>4 & house$Type=="t",c("Rooms")]=3
+# 
+
+#========"Landsize"==========
+
+# house$Landsize[house$Landsize==0 ]=NA
+
+# house[house$Landsize>1283,"Landsize"]=median(house$Landsize,na.rm = T)
+
+# house$Landsize=(house$Landsize)^0.5
+
+hist(house$Landsize)
+house$Landsize[is.na(house$Landsize)]=median(house$Landsize,na.rm = T)
+
+hist((house$Landsize)^0.5)
+boxplot((house$Landsize))
+
+##===BuildingArea NA removal========
+
+
+
+hist(house$BuildingArea)
+house$BuildingArea[is.na(house$BuildingArea)]=median(house$BuildingArea,na.rm = T)
+# house[house$BuildingArea>295,"BuildingArea"]=median(house$BuildingArea,na.rm = T)
+hist((house$BuildingArea)^0.5)
+
+boxplot(house$BuildingArea)
+
+##===YearBuilt NA removal========
+
+sort(table(house$YearBuilt),decreasing = T)
+house[is.na(house$YearBuilt),"YearBuilt"]=1970
+
+# for(i in 1 : round(((max(house$YearBuilt)-min(house$YearBuilt))/10),0)){
+#   print(i)
+#   print(min(house$YearBuilt)+((i)*10))
+#   house$yearb[house$YearBuilt>=(min(house$YearBuilt)+((i-1)*10)) & house$YearBuilt<(min(house$YearBuilt)+((i)*10))]= i
+#   
+# }
+
+# house=house[,-c(15)]
+##===CouncilArea NA removal========
+sort(table(house$CouncilArea),decreasing = T)
+
+house$CouncilArea[is.na(house$CouncilArea)]="Boroondara"
+
+
+house$Suburb=gsub("[[:punct:]]","",house$Suburb)
+house$Suburb=gsub("[^[:alnum:]]","",house$Suburb)
+
+house$CouncilArea=gsub("[[:punct:]]","",house$CouncilArea)
+house$CouncilArea=gsub("[^[:alnum:]]","",house$CouncilArea)
+
+house$SellerG=gsub("[[:punct:]]","",house$SellerG)
+house$SellerG=gsub("[^[:alnum:]]","",house$SellerG)
+
+b=house
+str(b)
+b=b[-c(2,6,8,14)]
+colSums(is.na(b))
+
+
+b=dummy(b,c("Suburb","Type","Method","CouncilArea"),limit = 200,rm_original = T)
+
+
+# dmy=dummyVars("~.",b)
+# b=data.frame(predict(dmy,b))
+a=which(names(b) %in%"Price")
+b=scale(b)
+b_test=b
+dim(b_test)
+
+b5=as.matrix(b_test)
+
+xgbdtest=xgb.DMatrix(data=b5)
+
+bt1=b5
+bt1$pred=predict(bst,xgbdtest,ntreelimit =214 )#as.matrix(h1_test[2:425])
+hist(bt1$pred)
+
+write.csv(bt1$pred, file = "xgb.csv",row.names = F)
+
+###=====Corr==========
+
+str(house)
+house1=dumm::dummy( data=house,vnames = c("Type","Method","CouncilArea"),limit = 50 )
+
+house1=house1 %>% na.omit()
+cor(house1)
+
+library(corrplot)
+windows()
+corrplot(cor(house1))
+
+table(house$YearBuilt)
+hist(house$YearBuilt)
+

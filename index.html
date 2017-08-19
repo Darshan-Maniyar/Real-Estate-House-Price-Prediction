@@ -14,6 +14,11 @@
 		<link rel="stylesheet" href="assets/css/main.css" />
 		<!--[if lte IE 9]><link rel="stylesheet" href="assets/css/ie9.css" /><![endif]-->
 		<!--[if lte IE 8]><link rel="stylesheet" href="assets/css/ie8.css" /><![endif]-->
+<script>
+  function resizeIframe(obj) {
+    obj.style.height = obj.contentWindow.document.body.scrollHeight + 'px';
+  }
+</script>
 	</head>
 	<body>
 
@@ -148,7 +153,8 @@ Council Area: Governing council for the area<br />
 							<!-- <a href="#" class="image"><img src="images/pic01.jpg" alt="" data-position="center center" /></a> -->
 							<div class="content">
 								<div class="inner">
-									<iframe src="/Real-Estate-House-Price-Prediction/P1_Real_Estate/Submission/4/Real_Estate.html" height="2000" width="1100"></iframe>
+								<iframe src="/Real-Estate-House-Price-Prediction/P1_Real_Estate/Submission/4/Real_Estate.html" frameborder="0" scrolling="no" onload="resizeIframe(this)" />
+									<!-- <iframe src="/Real-Estate-House-Price-Prediction/P1_Real_Estate/Submission/4/Real_Estate.html" height="2000" width="1100"></iframe> -->
 								</div>
 							</div>
 						</section>

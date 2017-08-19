@@ -1,0 +1,41 @@
+Price prediction of house take many factores in cosideration. 
+
+on high level we can consider factores(we may call it as fetures as well) 
+
+like econimic condition of country. devlopment of the region( which ma include which include connectivity and transport facility, Job opportunity in region. 
+
+other infrastructure facilities like e school. colloge. Stadium. super markets in region etc.) so. all these fetures make each region different and it is hard to arrive at one solution (alogorethem) which can predict house price globally. and can be applied in any region. 
+
+so it is better to treat each region or city differently and predict house price region wise. 
+
+This is the main focus of this execesirse. is to predict house price in Melburne city in Austrailia. 
+
+Now as we are confined to a perticular region we can eleminate above fetures like economic condition of countries. devlopment in regionand all as we are talking about Just one country and one city. 
+
+Now lets look at second level of fetures which may affect house price. This could be Location of house in city, House fetures itself etc. 
+
+Let's talk about ‘location first, Location can have attributes like. councile area. suburbe, Distance of council area from main city. Post code. 
+
+All these fetures speaks about the where the house is located, and price may depend on these fetures as. . _ _ 2.9. If we conSider feture 'Distance' of counCil area from main City. than we can if we ‘live in near by area to city center than we are leaVing in some prime location 
+
+we ma have better facilties there so prices of house in those areas may be higher. I Simil ary we can consider other ferures like suburbe. with in council area we can have may uburb and each suburb can have different locality, 
+
+e.g. in perticular sububran region we may have only rich people living. in some suburbe only middle class leaVing (This is the fact in real estat). 
+
+So as we can see Locality may impact house price, so we will consider these as a fetures in our algorethem to predict house price. 
+
+Second one we have is House fetures, _ so House fesuaes c.)an be, II of rooms, I! of bedrooms. # of bath rooms. # of car parking. carpet area (Building area). Land size ( which will cover how much open area is there aroun ouse 
+
+There could be other fetures as well which may affect the house price. 
+
+Like The methode of house sell. seller etc. 
+
+-ut these are least important. but still we can consider Method of house sell for these execiser, seller we can ignore as it would make very little or no impact on house price that which is selling the house. 
+
+There could be other fetures such as qulity of house which may include how well the house is maintained, what kind of flooring is used, paint condition. heating and ooling system. plumbing system, etc. 
+
+But unfortunatly we do not have the quality as ect of the house With us, so we have to create our model based on what ever information we have. 
+
+And this is the challege every data sc1enties ace. 1) Amount of data 2) Quality of data 
+
+both are important factor in determing how good would be the model. 

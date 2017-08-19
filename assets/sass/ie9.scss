@@ -4,10 +4,55 @@
 @import 'libs/skel';
 
 /*
-	Editorial by HTML5 UP
+	Hyperspace by HTML5 UP
 	html5up.net | @ajlkn
 	Free for personal and commercial use under the CCA 3.0 license (html5up.net/license)
 */
+
+/* Type */
+
+	h1 {
+		&.major {
+			&:after {
+				background: _palette(accent3);
+			}
+		}
+	}
+
+/* Wrapper */
+
+	.wrapper {
+		&.fullscreen {
+			min-height: 0;
+			padding-bottom: 6em;
+			padding-top: 6em;
+
+			body.is-ie & {
+				height: auto;
+			}
+		}
+	}
+
+/* Spotlights */
+
+	.spotlights {
+		> section {
+			padding-left: 20em;
+			position: relative;
+
+			> .image {
+				height: 100%;
+				left: 0;
+				position: absolute;
+				top: 0;
+				width: 20em;
+			}
+
+			> .content {
+				width: 100%;
+			}
+		}
+	}
 
 /* Features */
 
@@ -18,67 +63,51 @@
 			display: block;
 		}
 
-		article {
+		section {
 			float: left;
-
-			&:after {
-				clear: both;
-				content: '';
-				display: block;
-			}
-
-			.icon {
-				float: left;
-			}
 		}
 	}
 
-/* Posts */
+/* Split */
 
-	.posts {
+	.split {
 		&:after {
 			clear: both;
 			content: '';
 			display: block;
 		}
 
-		article {
+		> * {
 			float: left;
 		}
-	}
-
-/* Main */
-
-	#main {
-		padding-left: _size(sidebar-width-alt);
 	}
 
 /* Sidebar */
 
 	#sidebar {
-		position: absolute;
-		top: 0;
-		left: 0;
-		min-height: 100%;
-		width: _size(sidebar-width-alt);
+		nav {
+			a {
+				&:after {
+					background-color: _palette(accent3);
+				}
+			}
+		}
 	}
 
-/* Banner */
+/* Header */
 
-	#banner {
+	#header {
 		&:after {
 			clear: both;
 			content: '';
 			display: block;
 		}
 
-		.content {
+		> .title {
 			float: left;
-			padding-right: (_size(element-margin) * 2);
 		}
 
-		.image {
-			float: left;
-			margin-left: 0;
+		> nav {
+			float: right;
 		}
 	}
